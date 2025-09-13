@@ -3,8 +3,10 @@ package app
 import (
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/matheusjv11/go-banking/service"
 )
 
@@ -30,4 +32,24 @@ func (ch *CustomerHandlers) getAllUsers(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Add("Content-Type", "applicaton/json")
 	json.NewEncoder(w).Encode(customers)
+}
+
+func (ch *CustomerHandlers) getUserById(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	customer, err := ch.service.GetCustomer(vars["customer_id"])
+
+	if err != nil {
+		w.WriteHeader(err.Code)
+		fmt.Fprint(w, err.Message)
+		return
+	}
+
+	if r.Header.Get("Content-Type") == "application/xml" {
+		w.Header().Add("Content-Type", "application/xml")
+		xml.NewEncoder(w).Encode(customer)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(customer)
 }
