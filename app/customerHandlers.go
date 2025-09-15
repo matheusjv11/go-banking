@@ -3,26 +3,19 @@ package app
 import (
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/matheusjv11/go-banking/service"
 )
 
-// The "json" can map how the properties will look like in a json format
-type Customer struct {
-	Name    string `json:"full_name" xml:"full_name"`
-	City    string `json:"city" xml:"city"`
-	Zipcode string `json:"zip_code" xml:"zip_code"`
-}
-
 type CustomerHandlers struct {
 	service service.CustomerService
 }
 
 func (ch *CustomerHandlers) getAllUsers(w http.ResponseWriter, r *http.Request) {
-	customers, _ := ch.service.GetAllCustomer()
+	status := r.URL.Query().Get("status")
+	customers, _ := ch.service.GetAllCustomer(status)
 
 	if r.Header.Get("Content-Type") == "application/xml" {
 		w.Header().Add("Content-Type", "applicaton/xml")
@@ -30,8 +23,7 @@ func (ch *CustomerHandlers) getAllUsers(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Add("Content-Type", "applicaton/json")
-	json.NewEncoder(w).Encode(customers)
+	writeResponse(w, http.StatusOK, customers)
 }
 
 func (ch *CustomerHandlers) getUserById(w http.ResponseWriter, r *http.Request) {
@@ -39,17 +31,17 @@ func (ch *CustomerHandlers) getUserById(w http.ResponseWriter, r *http.Request) 
 	customer, err := ch.service.GetCustomer(vars["customer_id"])
 
 	if err != nil {
-		w.WriteHeader(err.Code)
-		fmt.Fprint(w, err.Message)
+		writeResponse(w, err.Code, err.AsMessage())
 		return
 	}
 
-	if r.Header.Get("Content-Type") == "application/xml" {
-		w.Header().Add("Content-Type", "application/xml")
-		xml.NewEncoder(w).Encode(customer)
-		return
-	}
+	writeResponse(w, http.StatusOK, customer)
+}
 
+func writeResponse(w http.ResponseWriter, code int, data interface{}) {
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(customer)
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		panic(err)
+	}
 }
